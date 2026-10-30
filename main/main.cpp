@@ -27,6 +27,15 @@ static constexpr uint32_t REPEAT_DELAY_MS  = 400;  // hold time before auto-repe
 static constexpr uint32_t REPEAT_PERIOD_MS = 80;   // auto-repeat interval while held
 static constexpr uint32_t POLL_MS          = 5;
 
+// ---- Buck converter (LM2596 module, X9C103S replaces its trimmer) ----
+// Wiring: FB -> VL, OUT+ -> VW and VH. The module's fixed resistor stays between FB and GND.
+// Vout = Vref * (1 + R(VL-VW) / R_low), capped at Vin minus the LM2596 dropout.
+// Keep Vin <= 5 V with this wiring: VW/VH sit at Vout and the X9C103S terminals are 5 V max.
+static constexpr float BUCK_VREF_V    = 1.25f;   // measured on the FB pin
+static constexpr float BUCK_R_LOW_OHM = 820.0f;  // measured between FB and GND
+static constexpr float BUCK_VIN_V     = 5.0f;    // buck input voltage
+static constexpr float BUCK_DROPOUT_V = 1.5f;    // approximate LM2596 dropout
+
 // NOTE: the X9C103S is a 5 V part. The ESP32's 3.3 V outputs are usually accepted as logic high,
 // but if your module misbehaves, add a level shifter.
 
@@ -80,6 +89,20 @@ private:
     uint32_t   next_repeat_ = 0;
 };
 
+// Estimated (not measured) buck output for the current wiper position.
+static void logOutput(const char *event, const X9C103S &pot)
+{
+    float vout = BUCK_VREF_V * (1.0f + pot.resistanceOhms() / BUCK_R_LOW_OHM);
+    float vmax = BUCK_VIN_V - BUCK_DROPOUT_V;
+    if (vout > vmax) {
+        ESP_LOGI(TAG, "%s position=%u (~%.0f ohm) -> Vout ~%.2f V (limited by Vin)",
+                 event, pot.position(), pot.resistanceOhms(), vmax);
+    } else {
+        ESP_LOGI(TAG, "%s position=%u (~%.0f ohm) -> Vout ~%.2f V",
+                 event, pot.position(), pot.resistanceOhms(), vout);
+    }
+}
+
 extern "C" void app_main(void)
 {
     X9C103S pot(PIN_CS, PIN_INC, PIN_UD);
@@ -90,7 +113,7 @@ extern "C" void app_main(void)
     // software counter matches the real resistance (position 99, ~10 kOhm).
     ESP_LOGI(TAG, "Calibrating: moving wiper to maximum...");
     pot.calibrateToMax();
-    ESP_LOGI(TAG, "Calibration done. Position=%u (~%.0f ohm)", pot.position(), pot.resistanceOhms());
+    logOutput("Calibration done.", pot);
 
     Button btnUp(PIN_BTN_UP, true);
     Button btnDown(PIN_BTN_DOWN, true);
@@ -104,11 +127,11 @@ extern "C" void app_main(void)
 
         if (btnUp.update(now)) {
             pot.step(+STEP_PER_PRESS);
-            ESP_LOGI(TAG, "UP   -> position=%u (~%.0f ohm)", pot.position(), pot.resistanceOhms());
+            logOutput("UP  ", pot);
         }
         if (btnDown.update(now)) {
             pot.step(-STEP_PER_PRESS);
-            ESP_LOGI(TAG, "DOWN -> position=%u (~%.0f ohm)", pot.position(), pot.resistanceOhms());
+            logOutput("DOWN", pot);
         }
         if (btnStore.update(now)) {
             pot.store();
