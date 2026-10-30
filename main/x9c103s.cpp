@@ -15,8 +15,9 @@ static constexpr uint32_t kPulseUs   = 50;  // INC high/low time (tIL/tIH >= 1 u
 static constexpr uint32_t kSettleUs  = 100; // wiper settle after the last step (tIW ~ 100 us)
 static constexpr uint32_t kStoreMs   = 20;  // non-volatile write time (tWR max 10 ms)
 
-X9C103S::X9C103S(gpio_num_t cs, gpio_num_t inc, gpio_num_t ud, float total_ohms, bool reversed)
-    : cs_(cs), inc_(inc), ud_(ud), total_ohms_(total_ohms), reversed_(reversed) {}
+X9C103S::X9C103S(gpio_num_t cs, gpio_num_t inc, gpio_num_t ud, float total_ohms, bool reversed,
+                 int taps)
+    : cs_(cs), inc_(inc), ud_(ud), total_ohms_(total_ohms), reversed_(reversed), taps_(taps) {}
 
 esp_err_t X9C103S::init()
 {
@@ -92,21 +93,21 @@ void X9C103S::pulses(bool up, int count, bool store)
 
 void X9C103S::home(bool store)
 {
-    // Extra pulses beyond kTaps are harmless: the wiper stops at the end of the array.
-    pulses(false, kTaps + 5, store);
+    // Extra pulses beyond taps_ are harmless: the wiper stops at the end of the array.
+    pulses(false, taps_ + 5, store);
     position_ = 0;
 }
 
 void X9C103S::calibrateToMax(bool store)
 {
-    // Extra pulses beyond kTaps are harmless: the wiper stops at the end of the array.
-    pulses(true, kTaps + 5, store);
-    position_ = kTaps - 1;
+    // Extra pulses beyond taps_ are harmless: the wiper stops at the end of the array.
+    pulses(true, taps_ + 5, store);
+    position_ = taps_ - 1;
 }
 
 void X9C103S::setPosition(uint8_t position, bool store)
 {
-    position = std::min<uint8_t>(position, kTaps - 1);
+    position = std::min<uint8_t>(position, static_cast<uint8_t>(taps_ - 1));
     int delta = static_cast<int>(position) - static_cast<int>(position_);
     if (delta == 0) {
         if (store) {
@@ -120,7 +121,7 @@ void X9C103S::setPosition(uint8_t position, bool store)
 
 void X9C103S::step(int delta, bool store)
 {
-    int target = std::clamp(static_cast<int>(position_) + delta, 0, kTaps - 1);
+    int target = std::clamp(static_cast<int>(position_) + delta, 0, taps_ - 1);
     setPosition(static_cast<uint8_t>(target), store);
 }
 
@@ -140,13 +141,13 @@ void X9C103S::store()
 
 float X9C103S::resistanceOhms() const
 {
-    return (total_ohms_ / (kTaps - 1)) * position_ + kWiperOhms;
+    return (total_ohms_ / (taps_ - 1)) * position_ + kWiperOhms;
 }
 
 uint8_t X9C103S::setResistanceOhms(float ohms, bool store)
 {
-    float steps = (ohms - kWiperOhms) / (total_ohms_ / (kTaps - 1));
-    int target = std::clamp(static_cast<int>(steps + 0.5f), 0, kTaps - 1);
+    float steps = (ohms - kWiperOhms) / (total_ohms_ / (taps_ - 1));
+    int target = std::clamp(static_cast<int>(steps + 0.5f), 0, taps_ - 1);
     setPosition(static_cast<uint8_t>(target), store);
     return static_cast<uint8_t>(target);
 }
