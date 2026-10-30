@@ -18,10 +18,15 @@
 class X9C103S {
 public:
     static constexpr int     kTaps       = 100;      // positions 0..99
-    static constexpr float   kTotalOhms  = 10000.0f; // nominal end-to-end resistance
     static constexpr float   kWiperOhms  = 40.0f;    // typical wiper resistance
 
-    X9C103S(gpio_num_t cs, gpio_num_t inc, gpio_num_t ud);
+    /**
+     * total_ohms: end-to-end resistance (X9C103 = 10 k, X9C503 = 50 k, X9C104 = 100 k).
+     * reversed:   set if "up" moves the wiper toward VL on your module (swapped VH/VL labels),
+     *             so that position() still tracks the resistance between VW and VL.
+     */
+    X9C103S(gpio_num_t cs, gpio_num_t inc, gpio_num_t ud,
+            float total_ohms = 10000.0f, bool reversed = false);
 
     /** Configure the GPIOs and leave the bus idle (CS=1, INC=1). */
     esp_err_t init();
@@ -64,6 +69,8 @@ private:
     void pulses(bool up, int count, bool store);
 
     gpio_num_t cs_, inc_, ud_;
+    float      total_ohms_;
+    bool       reversed_;
     uint8_t    position_ = 0;
     bool       initialized_ = false;
 };

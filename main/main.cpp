@@ -16,6 +16,11 @@ static constexpr gpio_num_t PIN_CS  = GPIO_NUM_27;
 static constexpr gpio_num_t PIN_INC = GPIO_NUM_19;
 static constexpr gpio_num_t PIN_UD  = GPIO_NUM_18;
 
+// Measured on this module: ~0.5 kOhm per step (X9C503, 50 kOhm), and "down" raised the
+// resistance between VL and VW, i.e. the direction is reversed.
+static constexpr float POT_TOTAL_OHM = 50000.0f;
+static constexpr bool  POT_REVERSED  = true;
+
 // Push buttons: wired between the GPIO and GND (internal pull-up is used, active LOW).
 static constexpr gpio_num_t PIN_BTN_UP    = GPIO_NUM_32;  // increase resistance
 static constexpr gpio_num_t PIN_BTN_DOWN  = GPIO_NUM_33;  // decrease resistance
@@ -134,12 +139,12 @@ static void logOutput(const char *event, const X9C103S &pot)
 
 extern "C" void app_main(void)
 {
-    X9C103S pot(PIN_CS, PIN_INC, PIN_UD);
+    X9C103S pot(PIN_CS, PIN_INC, PIN_UD, POT_TOTAL_OHM, POT_REVERSED);
     ESP_ERROR_CHECK(pot.init());
 
     // Calibration: the chip restores the last stored wiper position at power-up and it cannot
     // be read back. Driving the wiper to the maximum end stop on every boot guarantees the
-    // software counter matches the real resistance (position 99, ~10 kOhm).
+    // software counter matches the real resistance (position 99, ~POT_TOTAL_OHM).
     ESP_LOGI(TAG, "Calibrating: moving wiper to maximum...");
     pot.calibrateToMax();
     logOutput("Calibration done.", pot);

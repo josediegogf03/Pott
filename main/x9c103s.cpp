@@ -15,8 +15,8 @@ static constexpr uint32_t kPulseUs   = 5;   // INC high/low time (tIL/tIH >= 1 u
 static constexpr uint32_t kSettleUs  = 100; // wiper settle after the last step (tIW ~ 100 us)
 static constexpr uint32_t kStoreMs   = 20;  // non-volatile write time (tWR max 10 ms)
 
-X9C103S::X9C103S(gpio_num_t cs, gpio_num_t inc, gpio_num_t ud)
-    : cs_(cs), inc_(inc), ud_(ud) {}
+X9C103S::X9C103S(gpio_num_t cs, gpio_num_t inc, gpio_num_t ud, float total_ohms, bool reversed)
+    : cs_(cs), inc_(inc), ud_(ud), total_ohms_(total_ohms), reversed_(reversed) {}
 
 esp_err_t X9C103S::init()
 {
@@ -51,7 +51,7 @@ void X9C103S::pulses(bool up, int count, bool store)
         return;
     }
 
-    gpio_set_level(ud_, up ? 1 : 0);
+    gpio_set_level(ud_, (up != reversed_) ? 1 : 0);
     esp_rom_delay_us(kSetupUs);
 
     gpio_set_level(cs_, 0);          // select the chip (INC is high, so nothing moves)
@@ -130,12 +130,12 @@ void X9C103S::store()
 
 float X9C103S::resistanceOhms() const
 {
-    return (kTotalOhms / (kTaps - 1)) * position_ + kWiperOhms;
+    return (total_ohms_ / (kTaps - 1)) * position_ + kWiperOhms;
 }
 
 uint8_t X9C103S::setResistanceOhms(float ohms, bool store)
 {
-    float steps = (ohms - kWiperOhms) / (kTotalOhms / (kTaps - 1));
+    float steps = (ohms - kWiperOhms) / (total_ohms_ / (kTaps - 1));
     int target = std::clamp(static_cast<int>(steps + 0.5f), 0, kTaps - 1);
     setPosition(static_cast<uint8_t>(target), store);
     return static_cast<uint8_t>(target);
