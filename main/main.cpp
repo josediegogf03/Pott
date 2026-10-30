@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstdint>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -10,9 +11,9 @@ static const char *TAG = "main";
 
 // ---- Pin configuration (change to match your wiring) ----
 // X9C103S
-static constexpr gpio_num_t PIN_CS  = GPIO_NUM_25;
-static constexpr gpio_num_t PIN_INC = GPIO_NUM_26;
-static constexpr gpio_num_t PIN_UD  = GPIO_NUM_27;
+static constexpr gpio_num_t PIN_CS  = GPIO_NUM_27;
+static constexpr gpio_num_t PIN_INC = GPIO_NUM_19;
+static constexpr gpio_num_t PIN_UD  = GPIO_NUM_18;
 
 // Push buttons: wired between the GPIO and GND (internal pull-up is used, active LOW).
 static constexpr gpio_num_t PIN_BTN_UP    = GPIO_NUM_32;  // increase resistance
@@ -114,6 +115,8 @@ extern "C" void app_main(void)
             ESP_LOGI(TAG, "Stored position=%u in non-volatile memory", pot.position());
         }
 
-        vTaskDelay(pdMS_TO_TICKS(POLL_MS));
+        // At the default 100 Hz tick, 5 ms rounds down to 0 ticks and the loop would never
+        // yield, starving the idle task (task watchdog). Always sleep at least one tick.
+        vTaskDelay(std::max<TickType_t>(1, pdMS_TO_TICKS(POLL_MS)));
     }
 }

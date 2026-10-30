@@ -8,9 +8,9 @@ Control of an X9C103S (10 kOhm, 100 taps) with push buttons.
 ## Wiring
 | Signal | ESP32 GPIO |
 |---|---|
-| CS | 25 |
-| INC | 26 |
-| U/D | 27 |
+| CS | 27 |
+| INC | 19 |
+| U/D | 18 |
 | BTN UP | 32 (to GND) |
 | BTN DOWN | 33 (to GND) |
 | BTN STORE | 14 (to GND) |
