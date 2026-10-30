@@ -57,23 +57,27 @@ void X9C103S::pulses(bool up, int count, bool store)
     gpio_set_level(cs_, 0);          // select the chip (INC is high, so nothing moves)
     esp_rom_delay_us(kSetupUs);
 
+    // Every HIGH->LOW edge of INC while CS is low moves the wiper, so the sequence must
+    // contain exactly `count` falling edges. INC is left LOW after the last one.
     for (int i = 0; i < count; i++) {
-        gpio_set_level(inc_, 0);     // falling edge = one step
-        esp_rom_delay_us(kPulseUs);
-        gpio_set_level(inc_, 1);
+        if (i > 0) {
+            gpio_set_level(inc_, 1);     // rising edge: no movement
+            esp_rom_delay_us(kPulseUs);
+        }
+        gpio_set_level(inc_, 0);         // falling edge = one step
         esp_rom_delay_us(kPulseUs);
     }
     esp_rom_delay_us(kSettleUs);
 
     if (store) {
         // CS rising while INC is high => wiper position saved to non-volatile memory.
+        gpio_set_level(inc_, 1);
+        esp_rom_delay_us(kSetupUs);
         gpio_set_level(cs_, 1);
         vTaskDelay(pdMS_TO_TICKS(kStoreMs));
     } else {
-        // CS rising while INC is low => no store. Bring INC low first, then release CS,
-        // then restore INC high (a rising INC while deselected is ignored).
-        gpio_set_level(inc_, 0);
-        esp_rom_delay_us(kSetupUs);
+        // CS rising while INC is low => no store. Then restore INC high
+        // (a rising INC while deselected is ignored).
         gpio_set_level(cs_, 1);
         esp_rom_delay_us(kSetupUs);
         gpio_set_level(inc_, 1);

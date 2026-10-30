@@ -16,10 +16,9 @@ static constexpr gpio_num_t PIN_CS  = GPIO_NUM_27;
 static constexpr gpio_num_t PIN_INC = GPIO_NUM_19;
 static constexpr gpio_num_t PIN_UD  = GPIO_NUM_18;
 
-// Measured on this module: ~0.5 kOhm per step (X9C503, 50 kOhm), and "down" raised the
-// resistance between VL and VW, i.e. the direction is reversed.
-static constexpr float POT_TOTAL_OHM = 50000.0f;
-static constexpr bool  POT_REVERSED  = true;
+// X9C103S: 10 kOhm end to end. Set POT_REVERSED if UP lowers the resistance between VL and VW.
+static constexpr float POT_TOTAL_OHM = 10000.0f;
+static constexpr bool  POT_REVERSED  = false;
 
 // Push buttons: wired between the GPIO and GND (internal pull-up is used, active LOW).
 static constexpr gpio_num_t PIN_BTN_UP    = GPIO_NUM_32;  // increase resistance
