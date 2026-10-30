@@ -11,7 +11,7 @@ static const char *TAG = "X9C103S";
 
 // Timing (datasheet minimums are lower; these leave margin).
 static constexpr uint32_t kSetupUs   = 5;   // CS->INC and U/D->INC setup (tCI >= 100 ns, tDI >= 2.9 us)
-static constexpr uint32_t kPulseUs   = 5;   // INC high/low time (tIL/tIH >= 1 us)
+static constexpr uint32_t kPulseUs   = 50;  // INC high/low time (tIL/tIH >= 1 us)
 static constexpr uint32_t kSettleUs  = 100; // wiper settle after the last step (tIW ~ 100 us)
 static constexpr uint32_t kStoreMs   = 20;  // non-volatile write time (tWR max 10 ms)
 
@@ -32,6 +32,12 @@ esp_err_t X9C103S::init()
         ESP_LOGE(TAG, "gpio_config failed: %s", esp_err_to_name(err));
         return err;
     }
+
+    // Weakest drive strength: slower edges ring less on long jumper wires. Ringing on INC is
+    // seen by the chip as extra falling edges, i.e. extra wiper steps.
+    gpio_set_drive_capability(cs_, GPIO_DRIVE_CAP_0);
+    gpio_set_drive_capability(inc_, GPIO_DRIVE_CAP_0);
+    gpio_set_drive_capability(ud_, GPIO_DRIVE_CAP_0);
 
     // Idle state: chip deselected, INC high. Deselecting with INC high would store the
     // wiper, so set the levels in this order: INC high first, then CS high only after
