@@ -16,8 +16,9 @@ static constexpr gpio_num_t PIN_CS  = GPIO_NUM_27;
 static constexpr gpio_num_t PIN_INC = GPIO_NUM_19;
 static constexpr gpio_num_t PIN_UD  = GPIO_NUM_18;
 
-// Measured on this module (marked X9C103S): ~0.35 kOhm per step, ~10.9 kOhm at the top,
-// i.e. it behaves like a 32-position pot (31 steps x 350 ohm), not a 100-position X9C103.
+// Measured on this module (marked X9C103S): ~0.35 kOhm per step and ~10.9 kOhm at the top
+// (multimeter), ~0.109 V per step with VH at 3.3 V (ADC). So it is a 32-position pot, not the
+// datasheet's 100. Resistance between VL and VW = 40 ohm (wiper) + position * 350 ohm.
 // Set POT_REVERSED if UP lowers the resistance between VL and VW.
 static constexpr int   POT_TAPS      = 32;
 static constexpr float POT_TOTAL_OHM = 31 * 350.0f;

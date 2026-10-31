@@ -1,8 +1,10 @@
 # Pott - X9C103S digital potentiometer (ESP32, ESP-IDF, C++)
 
-Control of an X9C103S (10 kOhm, 100 taps) with push buttons.
+Control of an X9C103S digital potentiometer with push buttons. The module used here measures as a
+32-position pot (~350 ohm per step, ~10.9 kOhm at the top), not the datasheet's 100 positions;
+set `POT_TAPS` / `POT_TOTAL_OHM` in `main/main.cpp` for a different chip.
 
-- Calibration at every power-up: the wiper is driven to the maximum (position 99, ~10 kOhm).
+- Calibration at every power-up: the wiper is driven to the maximum (position 31, ~10.9 kOhm).
 - UP / DOWN buttons change the resistance (hold to auto-repeat); STORE saves the position to the chip's non-volatile memory.
 
 ## Wiring
