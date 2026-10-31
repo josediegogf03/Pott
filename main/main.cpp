@@ -38,8 +38,10 @@ static constexpr uint32_t REPEAT_PERIOD_MS = 80;   // auto-repeat interval while
 // ---- Wiper ADC test ----
 // Test wiring: VH -> 3V3, VL -> GND, VW -> PIN_VW. The wiper voltage is then
 // VH_VOLTS * position / (POT_TAPS - 1), independent of the pot's total resistance.
-static constexpr gpio_num_t    PIN_VW        = GPIO_NUM_34;    // ADC1 channel 6 (input only)
-static constexpr adc_channel_t VW_CHANNEL    = ADC_CHANNEL_6;
+// GPIO4 is on ADC2, which cannot be used while Wi-Fi is on (this project does not use Wi-Fi).
+static constexpr gpio_num_t    PIN_VW        = GPIO_NUM_4;     // ADC2 channel 0
+static constexpr adc_unit_t    VW_UNIT       = ADC_UNIT_2;
+static constexpr adc_channel_t VW_CHANNEL    = ADC_CHANNEL_0;
 static constexpr float         VH_VOLTS      = 3.3f;
 static constexpr int           ADC_SAMPLES   = 32;             // readings averaged per measurement
 static constexpr uint32_t      SWEEP_STEP_MS = 200;            // pause between sweep steps
@@ -133,7 +135,7 @@ static adc_cali_handle_t         s_cali;
 static void adcInit()
 {
     adc_oneshot_unit_init_cfg_t unit = {};
-    unit.unit_id = ADC_UNIT_1;
+    unit.unit_id = VW_UNIT;
     ESP_ERROR_CHECK(adc_oneshot_new_unit(&unit, &s_adc));
 
     // 12 dB attenuation reads up to ~3.1 V; the ESP32 ADC is most accurate below ~2.5 V.
@@ -143,11 +145,11 @@ static void adcInit()
     ESP_ERROR_CHECK(adc_oneshot_config_channel(s_adc, VW_CHANNEL, &chan));
 
     adc_cali_line_fitting_config_t cali = {};
-    cali.unit_id = ADC_UNIT_1;
+    cali.unit_id = VW_UNIT;
     cali.atten = ADC_ATTEN_DB_12;
     cali.bitwidth = ADC_BITWIDTH_DEFAULT;
     ESP_ERROR_CHECK(adc_cali_create_scheme_line_fitting(&cali, &s_cali));
-    ESP_LOGI(TAG, "Reading VW on GPIO%d (ADC1 channel %d)", PIN_VW, VW_CHANNEL);
+    ESP_LOGI(TAG, "Reading VW on GPIO%d (ADC%d channel %d)", PIN_VW, VW_UNIT + 1, VW_CHANNEL);
 }
 
 // Wiper voltage in mV, averaged over ADC_SAMPLES readings.
