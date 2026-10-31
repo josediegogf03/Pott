@@ -18,10 +18,12 @@ static constexpr gpio_num_t PIN_CS  = GPIO_NUM_27;
 static constexpr gpio_num_t PIN_INC = GPIO_NUM_19;
 static constexpr gpio_num_t PIN_UD  = GPIO_NUM_18;
 
-// Datasheet values (100 positions, 10 kOhm). The sweep below shows how many positions the
-// chip on the module really has. Set POT_REVERSED if UP lowers the resistance between VL and VW.
-static constexpr int   POT_TAPS      = 100;
-static constexpr float POT_TOTAL_OHM = 10000.0f;
+// Measured on this module (marked X9C103S): the ADC sweep moves ~106 mV per step and goes
+// from bottom to top in 31 steps, and the multimeter shows ~0.35 kOhm per step, ~10.9 kOhm at
+// the top. So it is a 32-position pot, not the datasheet's 100.
+// Set POT_REVERSED if UP lowers the resistance between VL and VW.
+static constexpr int   POT_TAPS      = 32;
+static constexpr float POT_TOTAL_OHM = 31 * 350.0f;
 static constexpr bool  POT_REVERSED  = false;
 
 // Push buttons: wired between the GPIO and GND (internal pull-up is used, active LOW).
@@ -177,7 +179,7 @@ static int logWiper(const char *event, const X9C103S &pot)
 }
 
 // Steps down one position at a time from the top and counts how many single-step commands
-// really moved the wiper. A 100-position chip changes ~33 mV per step on all 99 steps.
+// really moved the wiper. With 32 positions every step should change it by ~106 mV.
 static void sweepDown(X9C103S &pot)
 {
     ESP_LOGI(TAG, "Sweep: stepping down one position every %lu ms...", SWEEP_STEP_MS);
