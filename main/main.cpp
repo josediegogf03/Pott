@@ -38,13 +38,17 @@ static constexpr uint32_t REPEAT_DELAY_MS  = 400;  // hold time before auto-repe
 static constexpr uint32_t REPEAT_PERIOD_MS = 80;   // auto-repeat interval while held
 
 // ---- Wiper ADC test ----
-// Test wiring: VH -> 3V3, VL -> GND, VW -> PIN_VW. The wiper voltage is then
-// VH_VOLTS * position / (POT_TAPS - 1), independent of the pot's total resistance.
+// Test wiring: VH -> 3V3, VL -> GND, VW -> PIN_VW.
 // GPIO4 is on ADC2, which cannot be used while Wi-Fi is on (this project does not use Wi-Fi).
 static constexpr gpio_num_t    PIN_VW        = GPIO_NUM_4;     // ADC2 channel 0
 static constexpr adc_unit_t    VW_UNIT       = ADC_UNIT_2;
 static constexpr adc_channel_t VW_CHANNEL    = ADC_CHANNEL_0;
-static constexpr float         VH_VOLTS      = 3.3f;
+// Expected wiper voltage, fitted to the measured readings:
+//   VW_OFFSET_V + position * VW_STEP_V, clamped to what the ADC can read (VW_MIN_V..VW_MAX_V).
+static constexpr float         VW_OFFSET_V   = 0.032f;         // line extended to position 0
+static constexpr float         VW_STEP_V     = 0.109f;         // per position
+static constexpr float         VW_MIN_V      = 0.128f;         // lowest ADC reading (position 0)
+static constexpr float         VW_MAX_V      = 3.144f;         // highest ADC reading (positions 29-31)
 static constexpr int           ADC_SAMPLES   = 32;             // readings averaged per measurement
 static constexpr uint32_t      SWEEP_STEP_MS = 200;            // pause between sweep steps
 static constexpr int           STEP_SEEN_MV  = 15;             // a bigger change counts as a real move
@@ -172,14 +176,14 @@ static int readWiperMv()
 static int logWiper(const char *event, const X9C103S &pot)
 {
     int mv = readWiperMv();
-    float expected = VH_VOLTS * pot.position() / (POT_TAPS - 1);
+    float expected = std::clamp(VW_OFFSET_V + pot.position() * VW_STEP_V, VW_MIN_V, VW_MAX_V);
     ESP_LOGI(TAG, "%s position=%2u  expected %.3f V  measured %.3f V",
              event, pot.position(), expected, mv / 1000.0f);
     return mv;
 }
 
 // Steps down one position at a time from the top and counts how many single-step commands
-// really moved the wiper. With 32 positions every step should change it by ~106 mV.
+// really moved the wiper. Every step should change it by ~VW_STEP_V.
 static void sweepDown(X9C103S &pot)
 {
     ESP_LOGI(TAG, "Sweep: stepping down one position every %lu ms...", SWEEP_STEP_MS);
