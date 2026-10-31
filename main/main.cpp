@@ -15,6 +15,13 @@ static constexpr gpio_num_t PIN_CS  = GPIO_NUM_27;
 static constexpr gpio_num_t PIN_INC = GPIO_NUM_19;
 static constexpr gpio_num_t PIN_UD  = GPIO_NUM_18;
 
+// Measured on this module (marked X9C103S): ~0.35 kOhm per step and ~10.9 kOhm at the top
+// (multimeter), ~0.109 V per step with VH at 3.3 V (ADC). So it is a 32-position pot, not the
+// datasheet's 100. Resistance between VL and VW = 40 ohm (wiper) + position * 350 ohm.
+static constexpr int   POT_TAPS      = 32;
+static constexpr float POT_TOTAL_OHM = 31 * 350.0f;
+static constexpr bool  POT_REVERSED  = false;
+
 // Push buttons: wired between the GPIO and GND (internal pull-up is used, active LOW).
 static constexpr gpio_num_t PIN_BTN_UP    = GPIO_NUM_32;  // increase resistance
 static constexpr gpio_num_t PIN_BTN_DOWN  = GPIO_NUM_33;  // decrease resistance
@@ -82,12 +89,12 @@ private:
 
 extern "C" void app_main(void)
 {
-    X9C103S pot(PIN_CS, PIN_INC, PIN_UD);
+    X9C103S pot(PIN_CS, PIN_INC, PIN_UD, POT_TOTAL_OHM, POT_REVERSED, POT_TAPS);
     ESP_ERROR_CHECK(pot.init());
 
     // Calibration: the chip restores the last stored wiper position at power-up and it cannot
     // be read back. Driving the wiper to the maximum end stop on every boot guarantees the
-    // software counter matches the real resistance (position 99, ~10 kOhm).
+    // software counter matches the real resistance (position 31, ~10.9 kOhm).
     ESP_LOGI(TAG, "Calibrating: moving wiper to maximum...");
     pot.calibrateToMax();
     ESP_LOGI(TAG, "Calibration done. Position=%u (~%.0f ohm)", pot.position(), pot.resistanceOhms());

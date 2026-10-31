@@ -17,17 +17,22 @@
  */
 class X9C103S {
 public:
-    static constexpr int     kTaps       = 100;      // positions 0..99
-    static constexpr float   kTotalOhms  = 10000.0f; // nominal end-to-end resistance
     static constexpr float   kWiperOhms  = 40.0f;    // typical wiper resistance
 
-    X9C103S(gpio_num_t cs, gpio_num_t inc, gpio_num_t ud);
+    /**
+     * total_ohms: end-to-end resistance (X9C103 = 10 k, X9C503 = 50 k, X9C104 = 100 k).
+     * reversed:   set if "up" moves the wiper toward VL on your module (swapped VH/VL labels),
+     *             so that position() still tracks the resistance between VW and VL.
+     * taps:       number of wiper positions (100 on a genuine X9C; some clones have 32).
+     */
+    X9C103S(gpio_num_t cs, gpio_num_t inc, gpio_num_t ud,
+            float total_ohms = 10000.0f, bool reversed = false, int taps = 100);
 
     /** Configure the GPIOs and leave the bus idle (CS=1, INC=1). */
     esp_err_t init();
 
     /**
-     * Drive the wiper to 0 (VL side) by stepping down kTaps times.
+     * Drive the wiper to 0 (VL side) by stepping down taps times.
      * Use this once at boot to synchronize the software position counter,
      * because the chip restores the last stored wiper position at power-up
      * and offers no way to read it back.
@@ -35,17 +40,17 @@ public:
     void home(bool store = false);
 
     /**
-     * Calibration: drive the wiper to the maximum position (99, VH side) by stepping up
-     * kTaps + 5 times. Since the end stop is a known mechanical limit, the software
-     * counter is then exactly in sync with the chip (position = 99).
+     * Calibration: drive the wiper to the maximum position (taps - 1, VH side) by stepping up
+     * taps + 5 times. Since the end stop is a known mechanical limit, the software
+     * counter is then exactly in sync with the chip (position = taps - 1).
      * Call this at every power-up.
      */
     void calibrateToMax(bool store = false);
 
-    /** Move the wiper to an absolute position 0..99. Optionally save it to non-volatile memory. */
+    /** Move the wiper to an absolute position 0..taps-1. Optionally save it to non-volatile memory. */
     void setPosition(uint8_t position, bool store = false);
 
-    /** Move the wiper relative to the current one (clamped to 0..99). */
+    /** Move the wiper relative to the current one (clamped to 0..taps-1). */
     void step(int delta, bool store = false);
 
     /** Save the current wiper position to non-volatile memory. */
@@ -54,7 +59,7 @@ public:
     /** Set a resistance between VW and VL (approximate). Returns the position used. */
     uint8_t setResistanceOhms(float ohms, bool store = false);
 
-    /** Software-tracked wiper position (0..99). */
+    /** Software-tracked wiper position (0..taps-1). */
     uint8_t position() const { return position_; }
 
     /** Approximate resistance between VW and VL for the current position. */
@@ -64,6 +69,9 @@ private:
     void pulses(bool up, int count, bool store);
 
     gpio_num_t cs_, inc_, ud_;
+    float      total_ohms_;
+    bool       reversed_;
+    int        taps_;
     uint8_t    position_ = 0;
     bool       initialized_ = false;
 };
